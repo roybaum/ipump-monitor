@@ -545,7 +545,8 @@ HTML = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>iPump Op Log</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/x-icon" href="/favicon.ico?v={{app_version}}">
+    <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v={{app_version}}">
     <style>
         * {
             margin: 0;
@@ -1674,7 +1675,12 @@ def favicon():
     if not favicon_path:
         return ("", 204)
 
-    return send_file(favicon_path, mimetype="image/x-icon")
+    response = send_file(favicon_path, mimetype="image/x-icon", max_age=0)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+
+    return response
 
 
 @app.route("/save", methods=["POST"])
