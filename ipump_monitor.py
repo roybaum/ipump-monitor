@@ -1,10 +1,12 @@
 import csv
+import ipaddress
 import json
 import os
 import threading
 import time
 import xml.etree.ElementTree as ET
 from datetime import datetime
+from urllib.parse import urlsplit
 
 import requests
 from flask import Flask, jsonify, redirect, render_template_string, request, url_for
@@ -45,10 +47,55 @@ def load_config():
         with open(CONFIG_PATH) as f:
             config.update(json.load(f))
 
+    config["receiver_ip"] = normalize_receiver_ip(config.get("receiver_ip", ""))
+
 
 def save_config():
     with open(CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=2)
+
+
+def normalize_receiver_ip(value):
+
+    ip_text = str(value or "").strip()
+
+    if not ip_text:
+        return ""
+
+    parsed = urlsplit(ip_text)
+
+    if parsed.hostname:
+        return parsed.hostname.strip()
+
+    ip_text = ip_text.split("/", 1)[0]
+    ip_text = ip_text.split("\\", 1)[0]
+    ip_text = ip_text.split("?", 1)[0]
+    ip_text = ip_text.split("#", 1)[0]
+
+    if ip_text.startswith("[") and "]" in ip_text:
+        return ip_text[1:ip_text.index("]")].strip()
+
+    if ip_text.count(":") == 1:
+        host_text, port_text = ip_text.rsplit(":", 1)
+        if port_text.isdigit():
+            return host_text.strip()
+
+    return ip_text.strip()
+
+
+def has_valid_receiver_ip():
+
+    ip_text = normalize_receiver_ip(config.get("receiver_ip", ""))
+
+    if not ip_text or ip_text == "0.0.0.0":
+        return False
+
+    try:
+        ipaddress.ip_address(ip_text)
+    except ValueError:
+        return False
+
+    return True
 
 
 ###########################################################
@@ -322,7 +369,18 @@ def start_monitoring():
     if state["running"]:
         return
 
+    if not has_valid_receiver_ip():
+        state["last_error"] = "Enter a valid Receiver IP before starting monitoring."
+        return
+
+    try:
+        load_catalog()
+    except Exception as e:
+        state["last_error"] = f"Failed to load receiver catalog: {e}"
+        return
+
     state["running"] = True
+    state["last_error"] = ""
 
     t = threading.Thread(target=monitor_loop, daemon=True)
     t.start()
@@ -1309,7 +1367,7 @@ def index():
 @app.route("/save", methods=["POST"])
 def save():
 
-    config["receiver_ip"] = request.form["receiver_ip"]
+    config["receiver_ip"] = normalize_receiver_ip(request.form["receiver_ip"])
     config["log_rows"] = int(request.form["log_rows"])
     config["poll_interval"] = int(request.form["poll_interval"])
     config["time_display"] = request.form.get("time_display", "local")
@@ -1349,7 +1407,5 @@ def api_logs():
 if __name__ == "__main__":
 
     load_config()
-    load_catalog()
-    start_monitoring()
 
     app.run(host="0.0.0.0", port=8080)

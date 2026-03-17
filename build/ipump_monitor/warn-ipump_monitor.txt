@@ -47,7 +47,7 @@ missing module named _manylinux - imported by packaging._manylinux (delayed, opt
 missing module named setuptools._vendor.backports.zstd - imported by setuptools._vendor.backports (top-level), urllib3.util.request (conditional, optional), urllib3.response (conditional, optional)
 missing module named importlib_resources - imported by setuptools._vendor.jaraco.text (optional)
 missing module named trove_classifiers - imported by setuptools.config._validate_pyproject.formats (optional)
-missing module named pyimod02_importers - imported by C:\Users\roy.baum_alphamediau\AppData\Local\Programs\Python\Python313\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_pkgutil.py (delayed)
+missing module named pyimod02_importers - imported by C:\Users\roy.baum_alphamediau\HerdSites\ipump-monitor\.venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_pkgutil.py (delayed)
 missing module named 'watchdog.observers' - imported by werkzeug._reloader (delayed)
 missing module named 'watchdog.events' - imported by werkzeug._reloader (delayed)
 missing module named watchdog - imported by werkzeug._reloader (delayed)
