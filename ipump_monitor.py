@@ -16,7 +16,7 @@ CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
 CATALOG_PATH = os.path.join(BASE_DIR, "pcmi-cat.xml")
 
 config = {
-    "receiver_ip": "10.184.8.102",
+    "receiver_ip": "0.0.0.0",
     "log_rows": 500,
     "poll_interval": 60,
     "output_folder": BASE_DIR,
