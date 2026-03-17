@@ -38,6 +38,17 @@ state = {
     "rows": []
 }
 
+client_sessions = {}
+client_sessions_lock = threading.Lock()
+app_lifecycle = {
+    "browser_connected_once": False,
+    "shutdown_requested": False
+}
+
+CLIENT_HEARTBEAT_TIMEOUT = 15
+CLIENT_WATCH_INTERVAL = 5
+PROCESS_SHUTDOWN_DELAY = 0.75
+
 ###########################################################
 # CONFIG
 ###########################################################
@@ -96,6 +107,95 @@ def has_valid_receiver_ip():
         return False
 
     return True
+
+
+def extract_client_id_from_request():
+
+    json_payload = request.get_json(silent=True)
+
+    if isinstance(json_payload, dict):
+        client_id = str(json_payload.get("client_id", "")).strip()
+        if client_id:
+            return client_id
+
+    client_id = request.form.get("client_id", "").strip()
+
+    if client_id:
+        return client_id
+
+    raw_payload = request.get_data(as_text=True).strip()
+
+    if not raw_payload:
+        return ""
+
+    try:
+        parsed_payload = json.loads(raw_payload)
+    except ValueError:
+        return raw_payload
+
+    return str(parsed_payload.get("client_id", "")).strip()
+
+
+def mark_client_active(client_id):
+
+    if not client_id:
+        return
+
+    with client_sessions_lock:
+        client_sessions[client_id] = time.time()
+        app_lifecycle["browser_connected_once"] = True
+
+
+def prune_inactive_clients():
+
+    cutoff = time.time() - CLIENT_HEARTBEAT_TIMEOUT
+
+    with client_sessions_lock:
+        stale_clients = [
+            client_id
+            for client_id, last_seen in client_sessions.items()
+            if last_seen < cutoff
+        ]
+
+        for client_id in stale_clients:
+            client_sessions.pop(client_id, None)
+
+        return bool(client_sessions)
+
+
+def schedule_application_shutdown():
+
+    with client_sessions_lock:
+        if app_lifecycle["shutdown_requested"]:
+            return
+
+        app_lifecycle["shutdown_requested"] = True
+
+    state["running"] = False
+
+    def delayed_shutdown():
+        time.sleep(PROCESS_SHUTDOWN_DELAY)
+        os._exit(0)
+
+    threading.Thread(target=delayed_shutdown, daemon=True).start()
+
+
+def browser_watchdog_loop():
+
+    while True:
+        time.sleep(CLIENT_WATCH_INTERVAL)
+
+        with client_sessions_lock:
+            if app_lifecycle["shutdown_requested"]:
+                return
+
+            browser_connected_once = app_lifecycle["browser_connected_once"]
+
+        has_active_clients = prune_inactive_clients()
+
+        if browser_connected_once and not has_active_clients:
+            schedule_application_shutdown()
+            return
 
 
 ###########################################################
@@ -819,6 +919,7 @@ HTML = """
                         <form method="post" action="/stop">
                             <button type="submit" class="btn-danger">Stop Monitoring</button>
                         </form>
+                        <button type="button" id="exit_application_button" class="btn-secondary">Exit Application</button>
                     </div>
                 </details>
             </div>
@@ -1331,6 +1432,67 @@ HTML = """
             restoreAccordionState();
         }
 
+        const CLIENT_ID_STORAGE_KEY = 'ipump_monitor_client_id';
+        const CLIENT_HEARTBEAT_INTERVAL_MS = 5000;
+        let _heartbeatTimer = null;
+        let _shutdownInProgress = false;
+
+        function getBrowserClientId() {
+            let clientId = sessionStorage.getItem(CLIENT_ID_STORAGE_KEY);
+
+            if (!clientId) {
+                if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+                    clientId = window.crypto.randomUUID();
+                } else {
+                    clientId = `client-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                }
+
+                sessionStorage.setItem(CLIENT_ID_STORAGE_KEY, clientId);
+            }
+
+            return clientId;
+        }
+
+        const browserClientId = getBrowserClientId();
+
+        function postJson(url, payload) {
+            return fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+                keepalive: true
+            }).catch(function () {});
+        }
+
+        function startClientHeartbeat() {
+            postJson('/api/client-heartbeat', { client_id: browserClientId });
+
+            if (_heartbeatTimer) clearInterval(_heartbeatTimer);
+
+            _heartbeatTimer = setInterval(function () {
+                postJson('/api/client-heartbeat', { client_id: browserClientId });
+            }, CLIENT_HEARTBEAT_INTERVAL_MS);
+        }
+
+        function showShutdownMessage() {
+            document.body.innerHTML = `
+                <div style="max-width: 640px; margin: 60px auto; padding: 24px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #333;">
+                    <h1 style="font-size: 28px; margin-bottom: 12px;">iPump Monitor is closing</h1>
+                    <p style="font-size: 16px; line-height: 1.5;">The application is shutting down. You can close this browser tab.</p>
+                </div>
+            `;
+        }
+
+        function exitApplication() {
+            _shutdownInProgress = true;
+
+            if (_refreshTimer) clearTimeout(_refreshTimer);
+            if (_heartbeatTimer) clearInterval(_heartbeatTimer);
+
+            showShutdownMessage();
+            postJson('/shutdown', { client_id: browserClientId });
+        }
+
         // Auto-refresh every 5s, but pause while any form field is focused
         let _refreshTimer = null;
 
@@ -1346,6 +1508,9 @@ HTML = """
             el.addEventListener('blur', startRefreshTimer);
         });
 
+        document.getElementById('exit_application_button').addEventListener('click', exitApplication);
+
+        startClientHeartbeat();
         startRefreshTimer();
     </script>
 </body>
@@ -1394,10 +1559,26 @@ def stop():
     return redirect(url_for("index"))
 
 
+@app.route("/shutdown", methods=["POST"])
+def shutdown():
+
+    schedule_application_shutdown()
+
+    return ("", 204)
+
+
 @app.route("/api/logs")
 def api_logs():
 
     return jsonify(state["rows"])
+
+
+@app.route("/api/client-heartbeat", methods=["POST"])
+def api_client_heartbeat():
+
+    mark_client_active(extract_client_id_from_request())
+
+    return ("", 204)
 
 
 ###########################################################
@@ -1407,5 +1588,6 @@ def api_logs():
 if __name__ == "__main__":
 
     load_config()
+    threading.Thread(target=browser_watchdog_loop, daemon=True).start()
 
     app.run(host="0.0.0.0", port=8080)

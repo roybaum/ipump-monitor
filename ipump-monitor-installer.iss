@@ -18,6 +18,8 @@ Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=admin
 ChangesAssociations=no
+CloseApplications=yes
+RestartApplications=no
 
 ; Images (optional - comment out if you don't have them)
 ; WizardImageFile=installer-logo.bmp
@@ -49,4 +51,24 @@ begin
   WizardForm.FinishedHeadingLabel.Caption := 'Installation Complete!';
   WizardForm.FinishedLabel.Caption := 'iPump Monitor has been successfully installed. Click Finish to launch the application.' + #13#10 + #13#10 +
     'The application will open in your default web browser on http://localhost:8080';
+end;
+
+procedure StopRunningApplication();
+var
+  ResultCode: Integer;
+begin
+  Exec(
+    ExpandConstant('{cmd}'),
+    '/C taskkill /F /T /IM ipump_monitor.exe >nul 2>&1',
+    '',
+    SW_HIDE,
+    ewWaitUntilTerminated,
+    ResultCode
+  );
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    StopRunningApplication();
 end;

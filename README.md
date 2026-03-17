@@ -17,7 +17,7 @@ pip install -r requirements.txt
 python ipump_monitor.py
 ```
 
-The app serves the UI on port 8080. Enter a valid Receiver IP, save settings, and click Start to begin monitoring.
+The app serves the UI on port 8080. Enter a valid Receiver IP, save settings, and click Start to begin monitoring. Use Exit Application in the web UI to close the app, or close the browser page and the app will stop after a short timeout.
 
 ## Runtime files
 
