@@ -1405,6 +1405,26 @@ HTML = """
             }
         }
 
+        function normalizeReceiverIp(value) {
+            var s = (value || '').trim();
+            if (!s) return s;
+            try {
+                // Handle full URLs like http://10.0.0.1/path#hash
+                var parsed = new URL(s.includes('://') ? s : 'http://' + s);
+                return parsed.hostname;
+            } catch (e) {
+                // Fallback: strip port, path, query, fragment manually
+                s = s.split('/')[0].split('?')[0].split('#')[0];
+                if (s.includes(':')) {
+                    var parts = s.split(':');
+                    if (!isNaN(parts[parts.length - 1])) {
+                        s = parts.slice(0, -1).join(':');
+                    }
+                }
+                return s.trim();
+            }
+        }
+
         function storeSidebarScrollState() {
             const sidebar = document.getElementById('sidebar_panel');
 
@@ -1485,6 +1505,10 @@ HTML = """
         });
 
         document.getElementById('sidebar_panel').addEventListener('scroll', storeSidebarScrollState, { passive: true });
+
+        document.getElementById('receiver_ip').addEventListener('blur', function () {
+            this.value = normalizeReceiverIp(this.value);
+        });
 
         document.getElementById('save_settings_form').addEventListener('submit', function () {
             closeConfigurationPanel();
