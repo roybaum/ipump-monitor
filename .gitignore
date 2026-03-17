@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+*.log
+.venv/
+venv/
+config.json
+pcmi-cat.xml
+ipump_log.csv
