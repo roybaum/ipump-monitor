@@ -1,0 +1,50 @@
+; iPump Monitor Installer Script
+; Created with Inno Setup 6.0+
+; Download from: https://jrsoftware.org/isdl.php
+
+[Setup]
+AppName=iPump Monitor
+AppVersion=1.0.0
+AppPublisher=Your Organization
+AppPublisherURL=https://github.com/roybaum/ipump-monitor
+DefaultDirName={autopf}\iPump Monitor
+DefaultGroupName=iPump Monitor
+DisableProgramGroupPage=no
+OutputBaseFilename=iPump-Monitor-Setup-v1.0.0
+OutputDir=.\dist
+Compression=lzma
+SolidCompression=yes
+PrivilegesRequired=admin
+ChangesAssociations=no
+
+; Images (optional - comment out if you don't have them)
+; WizardImageFile=installer-logo.bmp
+; WizardSmallImageFile=installer-small.bmp
+
+[Languages]
+Name: "english"; MessagesFile: "compiler:Default.isl"
+
+[Tasks]
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
+
+[Files]
+Source: "dist\ipump_monitor.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
+
+[Icons]
+Name: "{group}\iPump Monitor"; Filename: "{app}\ipump_monitor.exe"; WorkingDir: "{app}"
+Name: "{group}\{cm:UninstallProgram,iPump Monitor}"; Filename: "{uninstallexe}"
+Name: "{commondesktop}\iPump Monitor"; Filename: "{app}\ipump_monitor.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+
+[Run]
+Filename: "{app}\ipump_monitor.exe"; Description: "{cm:LaunchProgram,iPump Monitor}"; Flags: nowait postinstall skipifsilent
+
+[UninstallRun]
+
+[Code]
+procedure InitializeWizard;
+begin
+  WizardForm.FinishedHeadingLabel.Caption := 'Installation Complete!';
+  WizardForm.FinishedLabel.Caption := 'iPump Monitor has been successfully installed. Click Finish to launch the application.' + #13#10 + #13#10 +
+    'The application will open in your default web browser on http://localhost:8080';
+end;
