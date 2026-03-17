@@ -24,7 +24,7 @@ APP_DATA_DIR = os.path.join(os.environ.get("APPDATA", BASE_DIR), "iPump Monitor"
 os.makedirs(APP_DATA_DIR, exist_ok=True)
 
 CONFIG_PATH = os.path.join(APP_DATA_DIR, "config.json")
-CATALOG_PATH = os.path.join(BASE_DIR, "pcmi-cat.xml")
+CATALOG_PATH = os.path.join(APP_DATA_DIR, "pcmi-cat.xml")
 
 DEFAULT_OUTPUT_FOLDER = os.path.join(os.path.expanduser("~"), "Documents")
 
