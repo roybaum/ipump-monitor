@@ -2,8 +2,10 @@ import csv
 import ipaddress
 import json
 import os
+import sys
 import threading
 import time
+import webbrowser
 import xml.etree.ElementTree as ET
 from datetime import datetime
 from urllib.parse import urlsplit
@@ -13,15 +15,24 @@ from flask import Flask, jsonify, redirect, render_template_string, request, url
 
 app = Flask(__name__)
 
-BASE_DIR = os.path.dirname(__file__)
-CONFIG_PATH = os.path.join(BASE_DIR, "config.json")
+if getattr(sys, 'frozen', False):
+    BASE_DIR = os.path.dirname(sys.executable)
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+APP_DATA_DIR = os.path.join(os.environ.get("APPDATA", BASE_DIR), "iPump Monitor")
+os.makedirs(APP_DATA_DIR, exist_ok=True)
+
+CONFIG_PATH = os.path.join(APP_DATA_DIR, "config.json")
 CATALOG_PATH = os.path.join(BASE_DIR, "pcmi-cat.xml")
+
+DEFAULT_OUTPUT_FOLDER = os.path.join(os.path.expanduser("~"), "Documents")
 
 config = {
     "receiver_ip": "0.0.0.0",
     "log_rows": 500,
     "poll_interval": 60,
-    "output_folder": BASE_DIR,
+    "output_folder": DEFAULT_OUTPUT_FOLDER,
     "time_display": "local"
 }
 
@@ -48,6 +59,7 @@ app_lifecycle = {
 CLIENT_HEARTBEAT_TIMEOUT = 15
 CLIENT_WATCH_INTERVAL = 5
 PROCESS_SHUTDOWN_DELAY = 0.75
+APP_URL = "http://localhost:8080/"
 
 ###########################################################
 # CONFIG
@@ -196,6 +208,16 @@ def browser_watchdog_loop():
         if browser_connected_once and not has_active_clients:
             schedule_application_shutdown()
             return
+
+
+def launch_browser_on_startup():
+
+    time.sleep(1.0)
+
+    try:
+        webbrowser.open_new_tab(APP_URL)
+    except Exception:
+        pass
 
 
 ###########################################################
@@ -874,14 +896,14 @@ HTML = """
 </head>
 <body>
     <div class="container">
-        <aside class="sidebar">
+        <aside class="sidebar" id="sidebar_panel">
             <h1 style="font-size: 20px; margin: 0 0 25px;">iPump Monitor</h1>
 
             <div class="config-section">
                 <details id="configuration_panel">
                     <summary class="accordion-summary">Configuration</summary>
                     <div class="accordion-content">
-                        <form method="post" action="/save">
+                        <form method="post" action="/save" id="save_settings_form">
                             <div class="form-group">
                                 <label for="receiver_ip">Receiver IP</label>
                                 <input type="text" id="receiver_ip" name="receiver_ip" value="{{config.receiver_ip}}">
@@ -1383,6 +1405,46 @@ HTML = """
             }
         }
 
+        function storeSidebarScrollState() {
+            const sidebar = document.getElementById('sidebar_panel');
+
+            if (!sidebar) {
+                return;
+            }
+
+            sessionStorage.setItem('ipump_monitor_sidebar_scroll_top', String(sidebar.scrollTop));
+        }
+
+        function restoreSidebarScrollState() {
+            const sidebar = document.getElementById('sidebar_panel');
+            const savedScrollTop = sessionStorage.getItem('ipump_monitor_sidebar_scroll_top');
+
+            if (!sidebar || savedScrollTop === null) {
+                return;
+            }
+
+            const scrollTop = parseInt(savedScrollTop, 10);
+
+            if (Number.isNaN(scrollTop)) {
+                return;
+            }
+
+            requestAnimationFrame(function () {
+                sidebar.scrollTop = scrollTop;
+            });
+        }
+
+        function closeConfigurationPanel() {
+            const configurationPanel = document.getElementById('configuration_panel');
+
+            if (!configurationPanel) {
+                return;
+            }
+
+            configurationPanel.open = false;
+            localStorage.setItem('configuration_panel_open', 'false');
+        }
+
         document.getElementById('filter_port').addEventListener('input', filterTable);
         document.getElementById('filter_relay').addEventListener('input', filterTable);
         document.getElementById('count_since_date').addEventListener('change', filterTable);
@@ -1422,14 +1484,24 @@ HTML = """
             localStorage.setItem('configuration_panel_open', this.open ? 'true' : 'false');
         });
 
+        document.getElementById('sidebar_panel').addEventListener('scroll', storeSidebarScrollState, { passive: true });
+
+        document.getElementById('save_settings_form').addEventListener('submit', function () {
+            closeConfigurationPanel();
+            storeSidebarScrollState();
+        });
+
         window.addEventListener('load', restoreFilters);
         window.addEventListener('load', restoreAccordionState);
+        window.addEventListener('load', restoreSidebarScrollState);
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', restoreFilters);
             document.addEventListener('DOMContentLoaded', restoreAccordionState);
+            document.addEventListener('DOMContentLoaded', restoreSidebarScrollState);
         } else {
             restoreFilters();
             restoreAccordionState();
+            restoreSidebarScrollState();
         }
 
         const CLIENT_ID_STORAGE_KEY = 'ipump_monitor_client_id';
@@ -1498,7 +1570,10 @@ HTML = """
 
         function startRefreshTimer() {
             if (_refreshTimer) clearTimeout(_refreshTimer);
-            _refreshTimer = setTimeout(() => { window.location.reload(); }, 5000);
+            _refreshTimer = setTimeout(() => {
+                storeSidebarScrollState();
+                window.location.reload();
+            }, 5000);
         }
 
         document.querySelectorAll('input, select').forEach(function(el) {
@@ -1588,6 +1663,7 @@ def api_client_heartbeat():
 if __name__ == "__main__":
 
     load_config()
+    threading.Thread(target=launch_browser_on_startup, daemon=True).start()
     threading.Thread(target=browser_watchdog_loop, daemon=True).start()
 
     app.run(host="0.0.0.0", port=8080)
