@@ -11,7 +11,7 @@ from datetime import datetime
 from urllib.parse import urlsplit
 
 import requests
-from flask import Flask, jsonify, redirect, render_template_string, request, url_for
+from flask import Flask, jsonify, redirect, render_template_string, request, send_file, url_for
 
 app = Flask(__name__)
 
@@ -60,6 +60,8 @@ CLIENT_HEARTBEAT_TIMEOUT = 15
 CLIENT_WATCH_INTERVAL = 5
 PROCESS_SHUTDOWN_DELAY = 0.75
 APP_URL = "http://localhost:8080/"
+APP_VERSION = "1.0.1"
+FAVICON_FILENAME = "favicon.ico"
 
 ###########################################################
 # CONFIG
@@ -218,6 +220,29 @@ def launch_browser_on_startup():
         webbrowser.open_new_tab(APP_URL)
     except Exception:
         pass
+
+
+def resolve_resource_path(filename):
+
+    bundled_dir = getattr(sys, "_MEIPASS", "")
+
+    if bundled_dir:
+        bundled_path = os.path.join(bundled_dir, filename)
+
+        if os.path.exists(bundled_path):
+            return bundled_path
+
+    base_path = os.path.join(BASE_DIR, filename)
+
+    if os.path.exists(base_path):
+        return base_path
+
+    script_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+
+    if os.path.exists(script_path):
+        return script_path
+
+    return ""
 
 
 ###########################################################
@@ -520,6 +545,7 @@ HTML = """
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Operational Log - iPump Monitor</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <style>
         * {
             margin: 0;
@@ -565,6 +591,14 @@ HTML = """
             font-size: 28px;
             margin-bottom: 30px;
             color: #1a1a1a;
+        }
+
+        .app-version {
+            font-size: 12px;
+            font-weight: 600;
+            color: #666;
+            margin-left: 6px;
+            vertical-align: middle;
         }
 
         h2 {
@@ -897,7 +931,7 @@ HTML = """
 <body>
     <div class="container">
         <aside class="sidebar" id="sidebar_panel">
-            <h1 style="font-size: 20px; margin: 0 0 25px;">iPump Monitor</h1>
+            <h1 style="font-size: 20px; margin: 0 0 25px;">iPump Monitor <span class="app-version">v{{app_version}}</span></h1>
 
             <div class="config-section">
                 <details id="configuration_panel">
@@ -1624,8 +1658,23 @@ def index():
         HTML,
         config=config,
         state=state,
-        rows=state["rows"]
+        rows=state["rows"],
+        app_version=APP_VERSION
     )
+
+
+@app.route("/favicon.ico")
+def favicon():
+
+    favicon_path = resolve_resource_path(FAVICON_FILENAME)
+
+    if not favicon_path:
+        favicon_path = resolve_resource_path("ipump-monitor.ico")
+
+    if not favicon_path:
+        return ("", 204)
+
+    return send_file(favicon_path, mimetype="image/x-icon")
 
 
 @app.route("/save", methods=["POST"])

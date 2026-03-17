@@ -4,7 +4,7 @@
 
 [Setup]
 AppName=iPump Monitor
-AppVersion=1.0.0
+AppVersion=1.0.1
 AppPublisher=Roy Baum
 AppPublisherURL=https://github.com/roybaum/ipump-monitor
 DefaultDirName={autopf}\iPump Monitor
@@ -12,7 +12,7 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 DefaultGroupName=iPump Monitor
 DisableProgramGroupPage=no
-OutputBaseFilename=iPump-Monitor-Setup-v1.0.0
+OutputBaseFilename=iPump-Monitor-Setup-v1.0.1
 OutputDir=.\dist
 SetupIconFile=ipump-monitor.ico
 Compression=lzma

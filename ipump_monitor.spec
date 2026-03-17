@@ -5,7 +5,7 @@ a = Analysis(
     ['ipump_monitor.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[('favicon.ico', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
