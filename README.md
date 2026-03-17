@@ -10,6 +10,25 @@ Flask-based monitor for iPump operational logs, packaged as a Windows executable
 - Lets you configure receiver IP, polling interval, row count, output folder, and time display mode
 - Stops when you click Exit Application or after browser disconnect timeout
 
+## Quick install (Windows, no Python required)
+
+1. Open the latest release page:
+
+	https://github.com/roybaum/ipump-monitor/releases/latest
+
+2. Download the installer asset:
+
+	iPump-Monitor-Setup-v<version>.exe
+
+3. Run the installer and complete setup.
+4. Launch iPump Monitor from the Start Menu (or desktop shortcut if selected).
+5. In the app UI:
+	- Enter Receiver IP.
+	- Click Save Settings.
+	- Click Start Monitoring.
+
+If you prefer not to install, download ipump_monitor.exe from the same release and run it directly.
+
 ## Local development
 
 1. Create and activate a virtual environment.
