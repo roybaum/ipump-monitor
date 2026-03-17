@@ -1663,6 +1663,10 @@ def api_client_heartbeat():
 if __name__ == "__main__":
 
     load_config()
+
+    if has_valid_receiver_ip():
+        start_monitoring()
+
     threading.Thread(target=launch_browser_on_startup, daemon=True).start()
     threading.Thread(target=browser_watchdog_loop, daemon=True).start()
 
