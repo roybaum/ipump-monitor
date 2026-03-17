@@ -5,7 +5,7 @@
 [Setup]
 AppName=iPump Monitor
 AppVersion=1.0.0
-AppPublisher=Your Organization
+AppPublisher=Roy Baum
 AppPublisherURL=https://github.com/roybaum/ipump-monitor
 DefaultDirName={autopf}\iPump Monitor
 ArchitecturesAllowed=x64compatible
@@ -14,6 +14,7 @@ DefaultGroupName=iPump Monitor
 DisableProgramGroupPage=no
 OutputBaseFilename=iPump-Monitor-Setup-v1.0.0
 OutputDir=.\dist
+SetupIconFile=ipump-monitor.ico
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=admin
@@ -34,11 +35,12 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "dist\ipump_monitor.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "README.md"; DestDir: "{app}"; Flags: ignoreversion
+Source: "ipump-monitor.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\iPump Monitor"; Filename: "{app}\ipump_monitor.exe"; WorkingDir: "{app}"
+Name: "{group}\iPump Monitor"; Filename: "{app}\ipump_monitor.exe"; WorkingDir: "{app}"; IconFilename: "{app}\ipump-monitor.ico"
 Name: "{group}\{cm:UninstallProgram,iPump Monitor}"; Filename: "{uninstallexe}"
-Name: "{commondesktop}\iPump Monitor"; Filename: "{app}\ipump_monitor.exe"; WorkingDir: "{app}"; Tasks: desktopicon
+Name: "{commondesktop}\iPump Monitor"; Filename: "{app}\ipump_monitor.exe"; WorkingDir: "{app}"; IconFilename: "{app}\ipump-monitor.ico"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\ipump_monitor.exe"; Description: "{cm:LaunchProgram,iPump Monitor}"; Flags: nowait postinstall skipifsilent
